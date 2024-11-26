@@ -1,0 +1,152 @@
+@page "/batteries/edit/{batteryId:int}"
+@using Rise.Shared.Batteries
+@using Rise.Shared.Users
+@using Rise.Domain.Batteries
+
+@inject IBatteryService BatteryService
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize(Roles = "Administrator")]
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+
+
+<MudPaper Class="p-4 shadow-none md:w-3/4" Style="margin: auto;">
+    <MudGrid Justify="Justify.SpaceBetween" AlignItems="Center">
+        <MudItem md="1">
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="GoBack" StartIcon="fa fa-arrow-left">
+                Terug
+            </MudButton>
+        </MudItem>
+
+        <MudItem md="10" class="text-center">
+            <MudText Typo="Typo.h5" class="ml-4">Batterij bewerken</MudText>
+        </MudItem>
+        <MudItem md="1" />
+    </MudGrid>
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center">
+            <MudProgressCircular Color="Color.Default" Indeterminate="true" class="mt-3" />
+        </div>
+    }
+    else if (battery == null)
+    {
+        <MudText Typo="Typo.body1" class="text-center">Geen batterij gevonden</MudText>
+    }
+    else
+    {
+        <MudTextField @bind-Value="editModel.Name" Label="Naam" Required="true" RequiredError="Verplicht" Class="mt-4" />
+
+        <MudSelect @bind-Value="batteryStatus" Label="Batterijstatus" Required="true" RequiredError="Verplicht"
+            Class="mt-6">
+            @foreach (var status in BatteryStatusOptions)
+            {
+                <MudSelectItem Value="@status">@status</MudSelectItem>
+            }
+        </MudSelect>
+
+
+        <MudSelect @bind-Value="user" Label="Gebruiker die de batterij momenteel bezit"
+            Placeholder="Selecteer een gebruiker" Required="true" RequiredError="Verplicht" Class="mt-6"
+            ToStringFunc="@converter">
+            @foreach (var user in usersList)
+            {
+                <MudSelectItem Value="@user" />
+            }
+        </MudSelect>
+        <MudGrid class="mt-4">
+            <MudItem xs="6">
+                <MudButton Color="Color.Primary" OnClick="HandleValidSubmit" Variant="Variant.Filled">Opslaan</MudButton>
+            </MudItem>
+        </MudGrid>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int batteryId { get; set; }
+    private BatteryDto.BatteryDetail? battery;
+    private BatteryDto.Mutate? editModel;
+    private UserDto.Index user;
+    private string? batteryStatus;
+    private IEnumerable<UserDto.Index>? usersList;
+    private bool isLoading = true;
+
+    public IEnumerable<string> BatteryStatusOptions => new List<string>
+{
+"Beschikbaar",
+"In reparatie",
+"Buiten dienst",
+"Reserve"
+};
+
+    protected override async Task OnInitializedAsync()
+    {
+        battery = await BatteryService.GetBatteryWithDetailsByIdAsync(batteryId);
+
+        if (battery != null)
+        {
+            editModel = new BatteryDto.Mutate
+                {
+                    Name = battery.Name,
+                    Status = ConvertToBatteryStatus(battery.Status).ToString(),
+                    UserId = battery.User.Id
+                };
+            user = battery.User;
+            batteryStatus = @Index.GetBatteryStatusNL(battery.Status.ToString());
+        }
+        await LoadUsers();
+        isLoading = false;
+    }
+
+    private async Task LoadUsers()
+    {
+        usersList = await UserService.GetAllAsync();
+    }
+
+    Func<UserDto.Index, string> converter = user => $"{user.Firstname} {user.Lastname}";
+
+    private Battery.BatteryStatus ConvertToBatteryStatus(string? status)
+    {
+        switch (status)
+        {
+            case "Available":
+            case "Beschikbaar":
+                return Battery.BatteryStatus.Available;
+            case "Reserve":
+                return Battery.BatteryStatus.Reserve;
+            case "InRepair":
+            case "In reparatie":
+                return Battery.BatteryStatus.InRepair;
+            case "OutOfService":
+            case "Buiten dienst":
+                return Battery.BatteryStatus.OutOfService;
+            default:
+                throw new ArgumentException("Invalid battery status", nameof(status));
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        if (battery != null)
+        {
+            editModel!.Status = ConvertToBatteryStatus(batteryStatus).ToString();
+            editModel!.UserId = user.Id;
+        };
+
+        var isSuccess = await BatteryService.UpdateBatteryAsync(batteryId, editModel);
+        if (isSuccess)
+        {
+            Navigation.NavigateTo("/batteries");
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/batteries");
+    }
+}

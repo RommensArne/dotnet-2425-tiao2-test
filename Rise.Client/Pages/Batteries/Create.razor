@@ -1,0 +1,101 @@
+@page "/batteries/create-battery"
+@using Rise.Shared.Batteries
+@using Rise.Shared.Users
+@inject IBatteryService BatteryService
+@inject NavigationManager Navigation
+@inject IUserService UserService
+@inject ISnackbar Snackbar
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize (Roles = "Administrator")]
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<MudPaper Class="p-4 shadow-none" Style="max-width: 600px; margin: auto;">    
+    <MudGrid Justify="Justify.SpaceBetween" AlignItems="Center">
+        <MudItem md="1">
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="GoBack"  StartIcon="fa fa-arrow-left">
+                Terug
+            </MudButton>
+        </MudItem>
+        <MudItem md="10" class="text-center">
+            <MudText Typo="Typo.h5">Nieuwe batterij</MudText>
+        </MudItem>
+        <MudItem md="1"/> 
+    </MudGrid>
+        @if(isLoading)
+        {
+            <MudItem class="d-flex justify-content-center">
+                <MudProgressCircular Color="Color.Default" Indeterminate="true" class="mt-3"/>
+            </MudItem>
+        }
+        else 
+        {
+        <MudForm @ref="form" OnValidSubmit="HandleValidSubmit" @bind-Value="battery">
+            <MudTextField Label="Naam batterij" @bind-Value="name" Required="true" RequiredError="verplicht" Class="mt-4"/>
+
+            <MudSelect @bind-Value="user" Label="Gebruiker die de nieuwe batterij momenteel bezit" Placeholder ="Selecteer een gebruiker" Required="true" RequiredError="Verplicht" Class="mt-6"
+            ToStringFunc="@converter">
+            @foreach (var user in usersList)
+            {
+                <MudSelectItem Value="@user"/>
+            }
+            </MudSelect>
+            <MudButton Type="Submit" Variant="Variant.Filled" Color="Color.Primary" Class="mt-4" OnClick="HandleValidSubmit">
+                Maak aan
+            </MudButton>
+        </MudForm>
+        }
+</MudPaper>
+
+@code {
+    private MudForm form;
+    private bool isLoading = true;
+    private string name;
+    private UserDto.Index user;
+    private BatteryDto.Create battery ;
+    private IEnumerable<UserDto.Index> usersList;
+    
+      protected override async Task OnInitializedAsync()
+    { 
+        await LoadUsers();
+        isLoading = false;
+    }
+    private async Task LoadUsers()
+    {
+        usersList = await UserService.GetAllAsync();
+    }
+    Func<UserDto.Index, string> converter = user => $"{user.Firstname} {user.Lastname}";
+    
+    private async Task HandleValidSubmit()
+    {   
+        await form.Validate();
+        
+        if(!form.IsValid)
+        {
+            return;
+        }
+        
+        battery = new BatteryDto.Create{Name = name, UserId = user.Id};
+
+        isLoading = true;
+        int response = await BatteryService.CreateBatteryAsync(battery);
+        isLoading = false;
+
+        if (response ==-1)
+        {
+            Snackbar.Add("Er is iets fout gegaan bij het aanmaken van de batterij.", Severity.Error);
+
+        }
+        else
+        {
+            Snackbar.Add("Batterij succesvol aangemaakt.", Severity.Success);
+            Navigation.NavigateTo("/batteries");
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/batteries");
+    }
+}

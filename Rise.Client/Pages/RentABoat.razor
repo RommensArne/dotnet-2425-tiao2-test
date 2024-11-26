@@ -1,0 +1,53 @@
+@page "/RentABoat"
+@attribute [Authorize]
+
+@using Rise.Shared.Users
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject IUserService UserService
+@inject NavigationManager Navigation
+@using MudBlazor
+<MudContainer>
+
+    <MudGrid>
+        <MudItem xs="12">
+            <PageTitle>Huur een boot</PageTitle>
+            <MudText class="mt-2 mb-2 text-base sm:text-xl md:text-2xl lg:text-3xl text-center">Huur een boot</MudText>
+        </MudItem>
+
+        @if (!isTrainingComplete)
+        {
+            <MudContainer Class="d-flex justify-center">
+                <MudCard Class="p-4 shadow-none" Style="background-color:Color.Surface; color:Color.TextPrimary;">
+                    <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3 text-center">
+                        U hebt nog geen opleiding voltooid. <br /> Om een boeking te kunnen maken moet u eerst aan een
+                        opleidingsmoment deelnemen. <br /> Een beheerder zal contact met u opnemen om deze in te plannen.
+                    </MudAlert>
+                </MudCard>
+            </MudContainer>
+        }
+        else
+        {
+            <MudItem xs="12">
+                <DatePicker />
+            </MudItem>
+        }
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private bool isTrainingComplete = true; // Default to true for admin
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        bool isAdmin = authState.User.IsInRole("Administrator");
+        if (!isAdmin)
+        {
+            var auth0UserId = authState.User.FindFirst(c => c.Type == "sub")?.Value;
+            if (!string.IsNullOrEmpty(auth0UserId))
+            {
+                var user = await UserService.GetUserAsync(auth0UserId);
+                isTrainingComplete = user?.IsTrainingComplete ?? false;
+            }
+        }
+    }
+}

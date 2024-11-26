@@ -1,0 +1,80 @@
+﻿@* NavMenu.razor *@
+@using MudBlazor
+@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject NavigationManager Navigation
+
+
+<MudAppBar Color="Color.Primary" Fixed="true" Dense="false" Style="height: 70px;">
+    <MudContainer>
+        <MudGrid Container="true" AlignItems="center" Style="height: 100%; padding-top: 10px; padding-bottom: 4px;">
+            <!-- Logo -->
+            <MudItem Class="d-flex align-center">
+                <NavLink Href="/" Match="NavLinkMatch.All" Class="d-flex align-center">
+                    <MudImage Src="/Images/BUUT_logo_91_66.png" Width="49" Height="36" Alt="Buut" Class="mr-4" />
+                </NavLink>
+            </MudItem>
+
+            <!-- Navigation Links -->
+            <MudItem Class="d-flex justify-content-center">
+                <AuthorizeView>
+                    <Authorized>
+
+                <MudButton Href="rentABoat" Color="Color.Inherit" Variant="Variant.Text" Class="mx-3" Style="font-size: 1.1em; padding: 10px 20px;">Huur een boot</MudButton>
+                <MudButton Href="bookings" Color="Color.Inherit" Variant="Variant.Text" Class="mx-3" Style="font-size: 1.1em; padding: 10px 20px;">Boekingen</MudButton>
+
+                    </Authorized>
+                </AuthorizeView>
+                <AuthorizeView Roles="Administrator">
+                    <Authorized>
+                        <MudButton Href="batteries" Color="Color.Inherit" Variant="Variant.Text" Class="ml-4">
+                            Batterijen</MudButton>
+
+                        <MudButton Href="settings" Color="Color.Inherit" Variant="Variant.Text" Class="ml-4">
+                            Beheer
+
+                        </MudButton>
+                        <MudButton Href="users" Color="Color.Inherit" Variant="Variant.Text">Gebruikers</MudButton>
+                    </Authorized>
+                </AuthorizeView>
+            </MudItem>
+
+            <MudSpacer />
+
+            <!-- Account -->
+            <MudItem Class="d-flex justify-content-end align-center">
+                <AuthorizeView>
+                    <Authorized>
+                        <MudMenu>
+                            <ActivatorContent>
+
+                                <MudIconButton Icon="@Icons.Material.Filled.AccountCircle" Title="Account" Color="Color.Inherit" Edge="Edge.End" />
+
+                            </ActivatorContent>
+                            <ChildContent>
+                                <MudMenuItem Disabled="true">Email: @context.User.Identity?.Name</MudMenuItem>
+                                <MudMenuItem @onclick="BeginLogOut">Log out</MudMenuItem>
+                            </ChildContent>
+                        </MudMenu>
+                    </Authorized>
+                    <NotAuthorized>
+                        <MudButton Href="authentication/login" Color="Color.Inherit" Variant="Variant.Text" Style="font-size: 1.1em;">Log in</MudButton>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </MudItem>
+        </MudGrid>
+    </MudContainer>
+</MudAppBar>
+
+@code {
+    private bool collapseNavMenu = true;
+
+    private void ToggleNavMenu()
+    {
+        collapseNavMenu = !collapseNavMenu;
+    }
+
+    public void BeginLogOut()
+    {
+        Navigation.NavigateToLogout("authentication/logout");
+    }
+}  

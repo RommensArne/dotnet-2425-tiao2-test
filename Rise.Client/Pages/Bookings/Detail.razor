@@ -1,0 +1,183 @@
+@page "/bookings/{bookingId:int}"
+@using Rise.Shared.Bookings
+@using Rise.Shared.Batteries
+@using Rise.Shared.Users
+@using Rise.Domain.Batteries
+@inject NavigationManager Navigation
+@inject IBookingService BookingService
+@inject IBatteryService BatteryService
+@inject IUserService UserService
+@using MudBlazor
+@attribute [Authorize]
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+
+<MudPaper Class="p-4 shadow-none md:w-3/4" Style="max-width: 100%; margin: auto;">
+    <MudGrid>
+        <MudItem xs="4" sm="2" md="1">
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="GoBack" StartIcon="fa fa-arrow-left">
+                Terug
+            </MudButton>
+        </MudItem>
+
+        <MudItem xs="8" sm="8" md="10" class="text-center">
+            <MudText Typo="Typo.h5">Boekingdetails</MudText>
+        </MudItem>
+    </MudGrid>
+    @if (isLoading)
+    {
+        <div class="d-flex justify-content-center">
+            <MudProgressCircular Color="Color.Default" Indeterminate="true" class="mt-3" />
+        </div>
+    }
+    @if (booking == null)
+    {
+        <MudText Typo="Typo.body1" class="text-center mt-4">Geen boeking gevonden</MudText>
+    }
+    else
+    {
+        <!-- Voor schermen kleiner dan 600px -->
+        <MudHidden Breakpoint="Breakpoint.SmAndUp">
+            <MudGrid Class="p-4 mt-4" Justify="Justify.FlexStart" AlignItems="Center" Gutter="3">
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Datum:</strong> @booking.RentalDateTime.ToString("dddd dd/MM/yyyy",
+                    new System.Globalization.CultureInfo("nl-BE"))</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Uur:</strong> @booking.RentalDateTime.ToString("HH:mm")</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Boot:</strong> @(booking.Boat?.Name ?? "onbekend")</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Status boeking:</strong>
+                        @(Index.TranslateStatusToNL((BookingStatus)booking.Status).ToLower())</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Batterijstatus:</strong> @batteryStatusNL</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Gebruik batterij:</strong> @(booking?.Battery?.Name ?? "onbekend")
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Haal op bij:</strong> @batteryOwnerName</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Telefoonnummer:</strong> @userPhoneNumber</MudText>
+                </MudItem>
+                @if (!string.IsNullOrEmpty(booking.Remark))
+                {
+                    <MudItem xs="12" class="text-start mt-2">
+                        <MudText Typo="Typo.body1"><strong>Opmerking:</strong> @booking.Remark</MudText>
+                    </MudItem>
+                }
+            </MudGrid>
+        </MudHidden>
+
+        <!-- Voor schermen groter dan 600px -->
+        <MudHidden Breakpoint="Breakpoint.Xs">
+            <MudGrid Class="p-4 mt-4" Justify="Justify.SpaceEvenly" AlignItems="Center" Gutter="3">
+                <MudItem xs="12" sm="6" md="5" class="text-end">
+                    <MudText Typo="Typo.body1"><strong>Datum:</strong> @booking.RentalDateTime.ToString("dddd dd/MM/yyyy",
+                    new System.Globalization.CultureInfo("nl-BE"))</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start">
+                    <MudText Typo="Typo.body1"><strong>Uur:</strong> @booking.RentalDateTime.ToString("HH:mm")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-end mt-2">
+                    <MudText Typo="Typo.body1"><strong>Boot:</strong> @(booking.Boat?.Name ?? "onbekend")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Status boeking:</strong>
+                        @(Index.TranslateStatusToNL((BookingStatus)booking.Status).ToLower())</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-end mt-2">
+                    <MudText Typo="Typo.body1"><strong>Batterijstatus:</strong> @batteryStatusNL</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Gebruik batterij:</strong> @(booking?.Battery?.Name ?? "onbekend")
+                    </MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-end mt-2">
+                    <MudText Typo="Typo.body1"><strong>Haal op bij:</strong> @batteryOwnerName</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Telefoonnummer:</strong> @userPhoneNumber</MudText>
+                </MudItem>
+                @if (!string.IsNullOrEmpty(booking.Remark))
+                {
+                    <MudItem xs="12" sm="6" md="5" class="text-end mt-2">
+                        <MudText Typo="Typo.body1"><strong>Opmerking:</strong> @booking.Remark</MudText>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="5" /> <!-- Empty item to keep the grid layout consistent -->
+                }
+            </MudGrid>
+        </MudHidden>
+
+
+        @if ((BookingStatus)booking.Status == BookingStatus.Active && batteryStatus !=
+       Battery.BatteryStatus.Available.ToString() && booking.RentalDateTime > DateTime.Now)
+        {
+            <MudDivider class="mt-2" />
+            <MudText Typo="Typo.body2" Class="mt-2 bold text-xl text-center">
+                We mailen u 3 dagen voor de afvaart waar, bij wie en welke batterij je kan afhalen.
+            </MudText>
+            <MudDivider class="mt-2" />
+        }
+    }
+</MudPaper>
+
+
+@code {
+    [Parameter] public int bookingId { get; set; }
+    private BookingDto.Detail? booking;
+    private string? batteryStatus;
+    private string batteryStatusNL = "geboekt";
+    private string userPhoneNumber = "onbekend";
+    private string batteryOwnerName = "onbekend";
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBookingDetails();
+        isLoading = false;
+    }
+
+    private async Task LoadBookingDetails()
+    {
+        booking = await BookingService.GetBookingByIdAsync(bookingId);
+        int? batteryId = booking?.Battery?.Id;
+        if (batteryId != null)
+        {
+
+            BatteryDto.BatteryDetail? batteryDetails = booking.Battery;
+
+
+            batteryStatus = batteryDetails?.Status.ToString();
+            batteryStatusNL = batteryStatus?.ToLower() switch
+            {
+                "available" => "beschikbaar",
+                "reserve" => "reserve",
+                "inrepair" => "in reparatie",
+                "outofservice" => "buiten dienst",
+                _ => "onbekend"
+            };
+
+            if (batteryDetails?.User != null)
+            {
+                batteryOwnerName = $"{batteryDetails!.User!.Firstname} {batteryDetails!.User!.Lastname}" ?? "onbekend";
+                userPhoneNumber = batteryDetails!.User!.PhoneNumber ?? "onbekend";
+            }
+        }
+
+    }
+
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/bookings");
+    }
+
+}

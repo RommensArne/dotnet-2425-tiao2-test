@@ -1,0 +1,139 @@
+@* @page "/batteries/{batteryId:int}"
+@using Rise.Shared.Batteries
+@using Rise.Shared.Users
+@inject NavigationManager Navigation
+@inject IBatteryService BatteryService
+@inject IUserService UserService
+@using MudBlazor
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize (Roles = "Administrator")]
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+<MudPaper Class="p-4 shadow-none md:w-3/4" Style="margin: auto;">
+    <MudGrid Justify="Justify.SpaceBetween" AlignItems="Center">
+        <MudItem md="1">
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="GoBack" StartIcon="fa fa-arrow-left">
+                Terug
+            </MudButton>
+        </MudItem>
+
+        <MudItem md="10" class="text-center">
+            <MudText Typo="Typo.h5" class="ml-4">Details batterij</MudText>
+        </MudItem>
+        <MudItem md="1"/>
+            
+    </MudGrid>
+
+    @if (isLoading)
+    {
+     <div class="d-flex justify-content-center">
+        <MudProgressCircular Color="Color.Default" Indeterminate="true" class="mt-3"/>
+     </div  >
+    }
+    else if (battery == null)
+    {
+        <MudText Typo="Typo.body1" Class="text-center mt-2">Geen batterij gevonden</MudText>
+    }
+    else
+    {   
+         <!-- Voor schermen kleiner dan 600px -->
+    <MudHidden Breakpoint="Breakpoint.SmAndUp">
+        <MudGrid Class="p-4 mt-4" Justify="Justify.FlexStart" AlignItems="Center" Gutter="3">
+            <MudItem xs="12" Class="text-start mt-2">
+                <MudText Typo="Typo.body1"><strong>Naam: </strong>@battery.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" Class="text-start mt-2">
+                <MudText Typo="Typo.body1"><strong>Status: </strong>@Index.GetBatteryStatusNL(battery.Status.ToString()).ToLower()</MudText>
+            </MudItem>
+            <MudItem xs="12" Class="text-start mt-2">                
+                <MudText Typo="Typo.body1"><strong>Gebruiker: </strong>@userFullName</MudText>
+            </MudItem>
+             <MudItem xs="12" Class="text-start mt-2">                
+                <MudText Typo="Typo.body1"><strong>Adres: </strong>@address</MudText>
+            </MudItem>
+            <MudItem xs="12" Class="text-start mt-2">
+                <MudText Typo="Typo.body1"><strong>Gebruikscycli: </strong>@battery.UseCycles</MudText>
+            </MudItem>
+            <MudItem xs="12" Class="text-start mt-2">
+                <MudText Typo="Typo.body1"><strong>Laatste gebruiksdatum: </strong>@dateLastUsed</MudText>
+            </MudItem>
+        </MudGrid>
+    </MudHidden>
+    <!-- Voor schermen groter dan 600px -->
+    <MudHidden Breakpoint="Breakpoint.Xs">
+          <MudGrid Class="p-4 mt-4" Justify="Justify.Center" AlignItems="Center" Gutter="3">
+            <MudItem xs="12" sm="6" md="5" Class="text-end mt-2">
+                <MudText Typo="Typo.body1"><strong>Naam: </strong>@battery.Name</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="5" Class="text-start mt-2">
+                <MudText Typo="Typo.body1"><strong>Status: </strong>@Index.GetBatteryStatusNL(battery.Status.ToString()).ToLower()</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="5" Class="text-end mt-2">                
+                <MudText Typo="Typo.body1"><strong>Gebruiker: </strong>@userFullName</MudText>
+            </MudItem>
+             <MudItem xs="12" sm="6" md="5" Class="text-start mt-2">                
+                <MudText Typo="Typo.body1"><strong>Adres: </strong>@address</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="5" Class="text-end mt-2">
+                <MudText Typo="Typo.body1"><strong>Gebruikscycli: </strong>@battery.UseCycles</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="5" Class="text-start mt-2">
+                <MudText Typo="Typo.body1"><strong>Laatste gebruiksdatum: </strong>@dateLastUsed</MudText>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="5"><!-- empty for layout--></MudItem>
+        </MudGrid>
+    </MudHidden>
+
+    }
+</MudPaper>
+
+@code {
+    [Parameter] public int batteryId { get; set; }
+    private BatteryDto.BatteryDetail battery;
+    private string userFullName;
+    private string dateLastUsed;
+    private string address;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBatteryDetails();
+        isLoading=false;
+    }
+
+    private async Task LoadBatteryDetails()
+    {
+        battery = await BatteryService.GetBatteryWithDetailsByIdAsync(batteryId);
+
+        if (battery?.User != null)
+        {
+            var user = battery.User;
+            userFullName = $"{user.Firstname} {user.Lastname}";
+        }else{
+            userFullName = "onbekend";
+        }
+         dateLastUsed= battery?.DateLastUsed == DateTime.MinValue? "nog niet gebruikt": 
+         battery.DateLastUsed.ToString("dd/MM/yyyy",  new System.Globalization.CultureInfo("nl-BE"));
+        setAddress();
+    }
+
+    private void setAddress()
+    {
+        if(battery?.User != null)
+        {
+            var user = battery.User;
+            address = $"{user.Address.Street} {user.Address.HouseNumber} " 
+            + (string.IsNullOrEmpty(user.Address.UnitNumber)?"":$"bus {user.Address.UnitNumber} ") 
+            + $"{user.Address.PostalCode} {user.Address.City}";
+        }
+        else{
+            address = "onbekend";
+        }
+    }
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/batteries");
+    }
+}
+*/ *@

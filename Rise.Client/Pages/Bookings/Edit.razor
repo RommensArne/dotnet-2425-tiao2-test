@@ -1,0 +1,284 @@
+@page "/bookings/edit/{bookingId:int}"
+@attribute [Authorize (Roles = "Administrator")]
+@using Rise.Shared.Bookings
+@using Rise.Shared.Users
+@using Rise.Shared.Boats
+@using Rise.Shared.Batteries
+@inject NavigationManager Navigation
+@inject IBookingService BookingService
+@inject IUserService UserService
+@inject IBoatService BoatService    
+@inject IBatteryService BatteryService
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using MudBlazor
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+
+<MudPaper Class="p-4 shadow-non md:w-3/4" Style="margin: auto;">
+    <MudGrid Justify="Justify.SpaceBetween" AlignItems="Center">
+        <MudItem md="1">
+            <MudButton Color="Color.Primary" Variant="Variant.Outlined" OnClick="GoBack" StartIcon="fa fa-arrow-left">
+                Terug
+            </MudButton>
+        </MudItem>
+
+        <MudItem md="10" class="text-center">
+            <MudText Typo="Typo.h5" class="ml-4">Boeking bewerken</MudText>
+        </MudItem>
+        <MudItem md="1"/>   
+    </MudGrid>
+    @if (isLoading)
+    {
+     <div class="d-flex justify-content-center">
+        <MudProgressCircular Color="Color.Default" Indeterminate="true" class="mt-3"/>
+     </div  >
+    }
+    else if (booking is null)
+    {
+        <MudText Typo="Typo.body1" class="text-center">Geen boeking gevonden</MudText>
+    }
+    else
+    {   
+        <!-- Voor schermen kleiner dan 600px -->
+        <MudHidden Breakpoint="Breakpoint.SmAndUp">
+            <MudGrid Class="p-4 mt-4" Justify="Justify.FlexStart" AlignItems="Center" Gutter="3">
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Datum:</strong> @booking.RentalDateTime.ToString("dddd dd/MM/yyyy",
+                    new System.Globalization.CultureInfo("nl-BE"))</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Uur:</strong> @booking.RentalDateTime.ToString("HH:mm")</MudText>
+                </MudItem>
+                <MudItem xs="12"  class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Gebruiker:</strong> @booking.User.Firstname @booking.User.Lastname</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudSelect T="int?" @bind-Value="@editModel.BoatId" Label="Boot" Variant="Variant.Outlined">
+                            <MudSelectItem Value="(int?) -1">Onbekend</MudSelectItem>
+                            @foreach (var boat in boats)
+                            {
+                            <MudSelectItem Value="(int?) boat.Id">@boat.Name</MudSelectItem>
+                            }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Status boeking:</strong>
+                        @(Index.TranslateStatusToNL((BookingStatus)  booking.Status).ToLower())</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Batterijstatus:</strong> @batteryStatusNL</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudSelect T="int?" @bind-Value="@editModel.BatteryId" Label="Gebruik batterij" Variant="Variant.Outlined"
+                        SelectedValuesChanged="@BatteryChanged">
+                        <MudSelectItem Value="(int?) -1">Onbekend</MudSelectItem>
+                        @foreach (var battery in batteries)
+                        {
+                            <MudSelectItem Value="(int?) battery.Id">@battery.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Haal op bij:</strong> @batteryOwnerName</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Telefoonnummer:</strong> @userPhoneNumber</MudText>
+                </MudItem>
+                <MudItem xs="12" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Betaalstatus:</strong> TODO betaalstatus</MudText>
+                </MudItem>
+                   <MudItem xs="12"class="text-start mt-2">
+                    <MudTextField @bind-Value="@editModel.Remark" MaxLength="200" Label="Opmerking" Variant="Variant.Outlined" AutoGrow="true" Clearable />
+                </MudItem>
+               
+            </MudGrid>
+        </MudHidden>
+
+        <!-- Voor schermen groter dan 600px -->
+        <MudHidden Breakpoint="Breakpoint.Xs">
+            <MudGrid Class="p-4 mt-4" Justify="Justify.SpaceEvenly" AlignItems="Center" Gutter="3">
+                <MudItem xs="12" sm="6" md="5" class="text-end">
+                    <MudText Typo="Typo.body1"><strong>Datum:</strong> @booking.RentalDateTime.ToString("dddd dd/MM/yyyy",
+                    new System.Globalization.CultureInfo("nl-BE"))</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start">
+                    <MudText Typo="Typo.body1"><strong>Uur:</strong> @booking.RentalDateTime.ToString("HH:mm")</MudText>
+                </MudItem>
+                 <MudItem xs="12" sm="6" md="5" class="flex items-center justify-end">
+                    <MudText Typo="Typo.body1"><strong>Gebruiker:</strong> @booking.User.Firstname @booking.User.Lastname</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start mt-2" >
+                    <div class="flex">
+                        <!-- trick to make mudSelect smaller -->
+                        <div class="grow min-w-8"> 
+                        <MudSelect T="int?" @bind-Value="@editModel.BoatId" Label="Boot" Variant="Variant.Outlined">
+                            <MudSelectItem Value="(int?) -1">Onbekend</MudSelectItem>
+                            @foreach (var boat in boats)
+                            {
+                                <MudSelectItem Value="(int?) boat.Id">@boat.Name</MudSelectItem>
+                            }
+                        </MudSelect>
+                        </div>
+                        <div class="grow"/>
+                    </div>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="mt-2 flex items-center justify-end">
+                    <MudText Typo="Typo.body1"><strong>Status boeking:</strong>
+                        @(Index.TranslateStatusToNL( (BookingStatus) booking.Status).ToLower())</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="mt-2 flex items-center justify-start">
+                    <MudText Typo="Typo.body1"><strong>Batterijstatus:</strong> @batteryStatusNL</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start mt-2">
+                    <div class="flex">
+                        <div class="grow"/>
+                        <!-- trick to make mudSelect smaller -->
+                        <div class="grow grow min-w-8"> 
+                            <MudSelect T="int?" @bind-Value="@editModel.BatteryId" Label="Gebruik batterij" Variant="Variant.Outlined"
+                            SelectedValuesChanged="@BatteryChanged" Class="text-end">
+                                <MudSelectItem Value="(int?) -1">Onbekend</MudSelectItem>
+                                @foreach (var battery in batteries)
+                                {
+                                    <MudSelectItem Value="(int?) battery.Id">@battery.Name</MudSelectItem>
+                                }
+                            </MudSelect>
+                        </div>
+                    </div>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="mt-2 flex items-center justify-start">
+                    <MudText Typo="Typo.body1"><strong>Haal op bij:</strong> @batteryOwnerName</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="mt-2 flex items-center justify-end">
+                    <MudText Typo="Typo.body1"><strong>Telefoonnummer:</strong> @userPhoneNumber</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="text-start mt-2">
+                    <MudText Typo="Typo.body1"><strong>Betaalstatus:</strong> TODO betaalstatus</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5" class="mt-2 flex items-center justify-en">
+                    <MudTextField @bind-Value="@editModel.Remark" MaxLength="200" Label="Opmerking" Variant="Variant.Outlined" AutoGrow="true" Clearable />
+                </MudItem>
+                <MudItem xs="12" sm="6" md="5"/> <!-- Empty item to keep the grid layout consistent -->
+            </MudGrid>
+        </MudHidden>
+                
+        <MudContainer class="flex justify-end">
+                <MudButton Color="Color.Primary" OnClick="HandleValidSubmit"  Variant="Variant.Filled" >Opslaan</MudButton>
+        </MudContainer>
+    }
+</MudPaper>
+
+@code {
+    [Parameter]
+    public int bookingId { get; set; }
+    private BookingDto.Detail? booking;
+    private BookingDto.Mutate? editModel;
+    private string? batteryStatus;
+    private string batteryStatusNL = "geboekt";
+    private string userPhoneNumber = "onbekend";
+    private string batteryOwnerName = "onbekend";
+
+    private IEnumerable<BoatDto.BoatIndex> boats;
+    private IEnumerable<BatteryDto.BatteryDetail> batteries;
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {  
+        booking = await BookingService.GetBookingByIdAsync(bookingId);
+        await LoadAdditionalDetails();
+
+        if (booking != null)
+        {   
+            editModel = new BookingDto.Mutate
+            {
+                BoatId = booking.Boat is null? -1: booking.Boat!.Id,
+                RentalDateTime = booking!.RentalDateTime,
+                BatteryId = booking!.Battery is null?-1: booking!.Battery!.Id,
+                UserId = booking!.User!.Id,
+                Status = booking!.Status,
+                Remark = booking!.Remark
+            };
+        }
+
+        boats = await BoatService.GetAllBoatsAsync();
+        batteries = await BatteryService.GetAllBatteriesWithDetailsAsync();
+        
+
+        isLoading = false;
+    }
+
+    private async Task LoadAdditionalDetails()
+    {
+        int? batteryId = booking?.Battery?.Id;
+        if (batteryId != null)
+        {
+            BatteryDto.BatteryDetail batteryDetails = await BatteryService.GetBatteryWithDetailsByIdAsync(batteryId.Value);
+
+            batteryStatus = batteryDetails?.Status.ToString();
+            batteryStatusNL = GetBatteryStatusNL(batteryStatus);    
+
+            if (batteryDetails?.User != null)
+            {
+                batteryOwnerName = $"{batteryDetails!.User!.Firstname} {batteryDetails!.User!.Lastname}" ?? "onbekend";
+                userPhoneNumber = batteryDetails!.User!.PhoneNumber ?? "onbekend";
+            }
+        }
+    }
+     private string GetBatteryStatusNL(string? batteryStatus)
+    {
+        return batteryStatus?.ToLower() switch
+        {
+            "available" => "beschikbaar",
+            "reserve" => "reserve",
+            "inrepair" => "in reparatie",
+            "outofservice" => "buiten dienst",
+            _ => "onbekend"
+        };
+    }
+    private void BatteryChanged(){
+        if (editModel!.BatteryId == -1)
+        {
+            batteryStatusNL = "geboekt";
+            userPhoneNumber = "onbekend";
+            batteryOwnerName = "onbekend";
+            return;
+        }
+        BatteryDto.BatteryDetail battery = batteries.First(b => b.Id == editModel!.BatteryId); 
+        batteryStatusNL = GetBatteryStatusNL(battery.Status);
+        userPhoneNumber = battery.User.PhoneNumber??"onbekend";
+        batteryOwnerName = battery.User is null? "onbekend": $"{battery.User.Firstname} {battery.User.Lastname}";
+    }
+    
+    private async Task HandleValidSubmit()
+    {   
+        if (editModel.BoatId == -1)
+        {
+            editModel.BoatId = null;
+        }
+        if (editModel.BatteryId == -1)
+        {
+            editModel.BatteryId = null;
+        }
+
+        var isSuccess = await BookingService.UpdateBookingAsync(bookingId, editModel!);
+        if (isSuccess)
+        {
+            Snackbar.Add("Boeking succesvol bewerkt", Severity.Success);
+            Navigation.NavigateTo("/bookings");
+        }
+        else
+        {
+            Snackbar.Add("Er is iets fout gegaan bij het bewerken van de boeking", Severity.Error);
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/bookings");
+    }
+}

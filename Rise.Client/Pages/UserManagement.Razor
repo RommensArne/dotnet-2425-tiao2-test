@@ -1,0 +1,134 @@
+@page "/users"
+@attribute [Authorize(Roles = "Administrator")]
+@inject IUserService UserService
+@inject IDialogService DialogService
+@inject MudBlazor.ISnackbar Snackbar
+@using Rise.Shared.Users
+@using MudBlazor
+@using MudBlazor.Components
+
+<PageTitle>User Management</PageTitle>
+
+    <MudText class="mt-2 mb-2 text-base sm:text-xl md:text-2xl lg:text-3xl text-center">Gebruikers</MudText>
+
+<MudTable Items="users" Striped="true" Hover="true">
+    <HeaderContent>
+        <MudTh>Id</MudTh>
+        <MudTh>Email</MudTh>
+        <MudTh>Voornaam</MudTh>
+        <MudTh>Achternaam</MudTh>
+        <MudTh>Adres</MudTh>
+        <MudTh>Telefoonnummer</MudTh>
+        <MudTh>Registratiestatus</MudTh>
+        <MudTh>Opleidingsstatus</MudTh>
+        <MudTh>Acties</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Id">@context.Id</MudTd>
+        <MudTd DataLabel="Email">@context.Email</MudTd>
+        <MudTd DataLabel="Voornaam">@context.Firstname</MudTd>
+        <MudTd DataLabel="Achternaam">@context.Lastname</MudTd>
+        <MudTd DataLabel="Adres">@context.Address?.FullAddress</MudTd>
+        <MudTd DataLabel="Telefoonnummer">@context.PhoneNumber</MudTd>
+        <MudTd DataLabel="Registratiestatus">
+            <MudChip T="string" Color="@(context.IsRegistrationComplete ? Color.Success : Color.Error)">
+                @(context.IsRegistrationComplete ? "Compleet" : "Onvolledig")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Opleidingsstatus">
+            <MudChip T="string"
+            Color="@(context.IsTrainingComplete ? Color.Success : Color.Error)"
+            OnClick="@(() => ConfirmTrainingStatusChange(context))">
+                @(context.IsTrainingComplete ? "Voltooid" : "Niet voltooid")
+            </MudChip>
+        </MudTd>
+
+        <MudTd DataLabel="Acties">
+    <MudIconButton
+        Icon="@Icons.Material.Filled.Delete"
+        Color="Color.Primary"
+        OnClick="@(() => ConfirmDeleteUser(context.Id))" />
+</MudTd>
+    </RowTemplate>
+</MudTable>
+
+@code {
+    private IEnumerable<UserDto.Index> users;
+
+    private void ToggleTrainingStatus(UserDto.Index user)
+    {
+        user.IsTrainingComplete = !user.IsTrainingComplete;
+    }
+    private async Task ConfirmTrainingStatusChange(UserDto.Index user)
+    {
+        ToggleTrainingStatus(user);
+        bool? result = await DialogService.ShowMessageBox(
+            "Bevestig wijziging",
+            $"Weet je zeker dat je de opleidingsstatus van {user.FullName} wilt wijzigen?",
+            yesText: "Ja", cancelText: "Annuleer");
+
+        if (result == true)
+        {
+            await ApplyTrainingStatusChange(user);
+        }else{
+        ToggleTrainingStatus(user);
+
+        }
+    }
+    private async Task ApplyTrainingStatusChange(UserDto.Index user)
+    {
+        await UserService.UpdateUserTrainingStatusAsync(user.Id, user.IsTrainingComplete);
+
+        var updatedUser = users.FirstOrDefault(u => u.Id == user.Id);
+        if (updatedUser != null)
+        {
+            updatedUser.IsTrainingComplete = user.IsTrainingComplete;
+        }
+
+        Snackbar.Add("Opleidingsstatus gewijzigd!", Severity.Success);
+    }
+    protected override async Task OnInitializedAsync()
+    {
+        users = await UserService.GetAllAsync();
+    }
+
+    private async Task UpdateTrainingStatus(int userId, bool isTrainingComplete)
+    {
+        await UserService.UpdateUserTrainingStatusAsync(userId, isTrainingComplete);
+    }
+
+    private async Task ApplyChanges(UserDto.Index user)
+    {
+        await UserService.UpdateUserTrainingStatusAsync(user.Id, user.IsTrainingComplete);
+
+        var updatedUser = users.FirstOrDefault(u => u.Id == user.Id);
+        if (updatedUser != null)
+        {
+            updatedUser.IsTrainingComplete = user.IsTrainingComplete;
+        }
+        Snackbar.Add("Wijzigingen succesvol!", Severity.Success);
+
+    }
+    private async Task ConfirmDeleteUser(int userId)
+    {
+        bool? result = await DialogService.ShowMessageBox(
+            "Verwijder bevestiging",
+            "Weet je zeker dat je deze gebruiker wilt verwijderen?",
+            yesText: "Verwijder", cancelText: "Annuleer");
+
+        if (result == true)
+        {
+            await DeleteUser(userId);
+        }
+    }
+
+    private async Task DeleteUser(int userId)
+    {
+        await UserService.DeleteAsync(userId);
+
+        users = users.Where(u => u.Id != userId).ToList();
+
+        Snackbar.Add("Gebruiker verwijderd!", Severity.Success);
+
+    }
+}

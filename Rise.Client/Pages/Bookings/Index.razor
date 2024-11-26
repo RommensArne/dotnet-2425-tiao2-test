@@ -1,0 +1,275 @@
+@page "/bookings"
+@attribute [Authorize]
+@using Rise.Shared.Bookings
+@using Rise.Shared.Users
+@inject NavigationManager Navigation
+@inject IBookingService BookingService
+@inject IUserService UserService
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@using MudBlazor
+
+<link href="https://use.fontawesome.com/releases/v5.14.0/css/all.css" rel="stylesheet">
+
+<div class="container mx-auto p-6" style="background-color:Color.Background; color:Color.TextPrimary;">
+
+    <MudPaper class="p-4 shadow-none " Style="background-color:Color.Surface; color:Color.TextPrimary;">
+        <MudItem class="text-center">
+            <MudText Typo="Typo.h5">Boekingen</MudText>
+        </MudItem>
+        @if (isLoading)
+        {
+            <div class="d-flex justify-content-center">
+                <MudProgressCircular Color="Color.Default" Indeterminate="true" class="mt-3" />
+            </div>
+        }
+        else
+        {
+            if (!isTrainingComplete)
+            {
+                <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">
+                    U hebt nog geen opleiding voltooid. Om een boeking te kunnen maken moet u eerst aan een
+                    opleidingsmoment deelnemen.
+                    Een beheerder zal contact met u opnemen om deze in te plannen.
+                </MudAlert>
+
+            }
+            else
+            {
+                // show/make bookings when training is complete
+                if (bookings == null)
+                {
+                    <MudGrid Justify="Justify.Center" AlignItems="AlignItems.Center" Class="text-center mt-6">
+                        <MudItem xs="12" md="8" lg="6" Class="flex justify-center flex-col items-center">
+                            @if (isTrainingComplete)
+                            {
+                                <MudText Typo="Typo.body1" Class="mb-2">Geen boekingen gevonden.</MudText>
+                                <MudButton Color="Color.Primary" OnClick="NavigateToRentABoat" Class="mt-2"
+                                    Style="padding: 10px 20px; font-size: 16px; font-weight: 600;">
+                                    Maak een nieuwe boeking aan
+                                </MudButton>
+                            }
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudTable @ref="_table" Items="bookings" Hover="true" Dense="true" CurrentPage="@currentPage"
+                        class="shadow-none">
+                        <HeaderContent>
+                            <MudTh>Datum</MudTh>
+                            <MudTh>Uur</MudTh>
+                            @if (isAdmin)
+                            {
+                                <MudTh>Gebruiker</MudTh>
+                            }
+                            <MudTh>Boot</MudTh>
+                            <MudTh>Status</MudTh>
+                            <MudTh>Betaalstatus</MudTh>
+                            <MudTh>Actie</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            @{
+                                var formattedDate = context.RentalDateTime.ToString("dddd dd/MM/yyyy", new
+                                System.Globalization.CultureInfo("nl-BE"));
+                                var capitalizedDate = char.ToUpper(formattedDate[0]) + formattedDate.Substring(1);
+                                var isCancelableBooking = context.RentalDateTime >= DateTime.Now && context.Battery == null;
+                            }
+
+                            <MudTd @onclick="() => NavigateToBookingDetails(context.Id)"
+                                class="@($"cursor-pointer {(firstFutureBooking == context ? "bold" : "")}")">
+                                @capitalizedDate
+                            </MudTd>
+                            <MudTd @onclick="() => NavigateToBookingDetails(context.Id)"
+                                class="@($"cursor-pointer {(firstFutureBooking == context ? "bold" : "")}")">
+                                @context.RentalDateTime.ToString("HH:mm")
+                            </MudTd>
+                            @if (isAdmin)
+                            {
+                                <MudTd @onclick="() => NavigateToBookingDetails(context.Id)"
+                                    class="@($"cursor-pointer {(firstFutureBooking == context ? "bold" : "")}")">
+                                    @context.User.Firstname @context.User.Lastname
+                                </MudTd>
+                            }
+                            <MudTd @onclick="() => NavigateToBookingDetails(context.Id)"
+                                class="@($"cursor-pointer {(firstFutureBooking == context ? "bold" : "")}")">
+                                @(context.Boat?.Name ?? "Onbekend")
+                            </MudTd>
+                            <MudTd @onclick="() => NavigateToBookingDetails(context.Id)"
+                                class="@($"cursor-pointer {(firstFutureBooking == context ? "bold" : "")}")">
+                                @TranslateStatusToNL((BookingStatus)context.Status)
+                            </MudTd>
+                            <MudTd @onclick="() => NavigateToBookingDetails(context.Id)"
+                                class="@($"cursor-pointer {(firstFutureBooking == context ? "bold" : "")}")">
+                                TODO Betaalstatus
+                            </MudTd>
+
+                            <MudTd>
+                                @if (isCancelableBooking && (BookingStatus)context.Status == BookingStatus.Active)
+                                {
+                                    <MudTooltip Text="Annuleren">
+
+                                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Primary"
+                                            @onclick="() => ConfirmCancelBooking(context.Id)"
+                                            class="hover:bg-primary transition duration-300 ease-in-out h" />
+                                    </MudTooltip>
+                                }
+                                @if (isAdmin)
+                                {
+                                    <MudTooltip Text="Bewerken">
+                                        <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary"
+                                            @onclick="() => EditBooking(context.Id)"
+                                            class="hover:bg-primary transition duration-300 ease-in-out" />
+                                    </MudTooltip>
+                                }
+                                else
+                                {
+                                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Primary"
+                                        style="visibility: hidden;" />
+                                }
+
+                            </MudTd>
+                        </RowTemplate>
+                        <PagerContent>
+                            <MudTablePager PageSizeOptions="pageSizeOptions" RowsPerPageString="Boekingen per pagina:" />
+                        </PagerContent>
+                    </MudTable>
+                }
+            }
+        }
+    </MudPaper>
+</div>
+
+@code {
+    private bool isAdmin = false;
+    private int userId;
+    private MudTable<BookingDto.Index> _table;
+    private IEnumerable<BookingDto.Index> bookings;
+    private int currentPage = 0;
+    private BookingDto.Index? firstFutureBooking;
+    private bool isTrainingComplete = true; // default to true for admin
+    private int[] pageSizeOptions = new int[] { 25, 50, 100 };
+
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+
+        //extra rechten voor admin
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        isAdmin = authState.User.IsInRole("Administrator");
+
+
+        if (!isAdmin)
+        {
+            var auth0UserId = authState.User.FindFirst(c => c.Type == "sub")?.Value;
+            userId = await UserService.GetUserIdAsync(auth0UserId!);
+
+            if (!string.IsNullOrEmpty(auth0UserId))
+            {
+                var user = await UserService.GetUserAsync(auth0UserId);
+                isTrainingComplete = user?.IsTrainingComplete ?? false;
+            }
+
+        }
+
+        await LoadBookings();
+        isLoading = false;
+        StateHasChanged();
+    }
+
+
+    private async Task LoadBookings()
+    {
+        //aanpassing nodig voor toekomstige rollen peter/meter?
+        bookings = isAdmin ? await BookingService.GetAllBookingsAsync() : await BookingService.GetBookingsByUserIdAsync(userId);
+
+
+        if (bookings != null)
+        {
+            // Zoek de index en object van de eerste toekomstige boeking
+            var firstFutureBookingIndex = bookings.ToList().FindIndex(b => b.RentalDateTime >= DateTime.Now &&
+            (BookingStatus)b.Status == BookingStatus.Active);
+            firstFutureBooking = firstFutureBookingIndex != -1 ? bookings.ElementAt(firstFutureBookingIndex) : null;
+            if (firstFutureBookingIndex != -1)
+            {
+                currentPage = firstFutureBookingIndex / pageSizeOptions[0];
+            }
+        }
+    }
+
+    private void EditBooking(int bookingId)
+    {
+        Navigation.NavigateTo($"/bookings/edit/{bookingId}");
+    }
+
+    private async Task ConfirmCancelBooking(int bookingId)
+    {
+        var parameters = new DialogParameters
+{ {"Title","Boeking annuleren"},
+{ "Message", "Weet u zeker dat u deze boeking wilt annuleren?" },
+{ "ConfirmText", "Bevestigen" },
+{ "CancelText", "Annuleren" },
+{ "ShowCancelButton", true }
+};
+
+        var dialog = DialogService.Show<ConfirmationDialog>("Bevestiging", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CancelBooking(bookingId);
+        }
+    }
+
+    private async Task CancelBooking(int bookingId)
+    {
+        try
+        {
+            var result = await BookingService.CancelBookingAsync(bookingId);
+            if (result)
+            {
+                await LoadBookings();
+                Snackbar.Add("Boeking succesvol geannuleerd.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Er is iets fout gegaan bij het annuleren van de boeking.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add("Er is iets fout gegaan bij het annuleren van de boeking.", Severity.Error);
+        }
+    }
+
+    public static string TranslateStatusToNL(BookingStatus status)
+    {
+        switch (status)
+        {
+            case BookingStatus.Cancelled:
+                return "Geannuleerd";
+            case BookingStatus.Completed:
+                return "Voltooid";
+            case BookingStatus.Active:
+                return "Actief";
+            default:
+                return "Onbekend";
+        }
+    }
+
+    private void NavigateToBookingDetails(int bookingId)
+    {
+        Navigation.NavigateTo($"/bookings/{bookingId}");
+    }
+
+    private void NavigateToRentABoat()
+    {
+        Navigation.NavigateTo("/rentABoat");
+    }
+
+
+}
