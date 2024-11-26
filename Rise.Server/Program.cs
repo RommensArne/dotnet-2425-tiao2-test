@@ -1,3 +1,5 @@
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+
 using System.Reflection;
 using System.Security.Claims;
 using DotNetEnv;
@@ -70,7 +72,9 @@ builder
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"));
+    options.UseMySql(builder.Configuration.GetConnectionString("MySqlServer"),
+    new MySqlServerVersion(new Version(10, 5, 22))
+    );
     options.EnableDetailedErrors();
     options.EnableSensitiveDataLogging();
     options.UseTriggers(options => options.AddTrigger<EntityBeforeSaveTrigger>());
