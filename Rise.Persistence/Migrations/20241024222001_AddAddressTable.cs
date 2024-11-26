@@ -45,12 +45,12 @@ namespace Rise.Persistence.Migrations
                     ),
 
                     CreatedAt = table.Column<DateTime>(
-                        type: "datetime2",
+                        type: "datetime",
                         nullable: false,
                         defaultValueSql: "GETUTCDATE()"
                     ),
                     UpdatedAt = table.Column<DateTime>(
-                        type: "datetime2",
+                        type: "datetime",
                         nullable: false,
                         defaultValueSql: "GETUTCDATE()"
                     ),
