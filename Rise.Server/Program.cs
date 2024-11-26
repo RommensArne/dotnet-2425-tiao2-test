@@ -26,13 +26,13 @@ using Rise.Shared.Users;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.ListenAnyIP(5000); // Bind to 5000
-    options.ListenAnyIP(5001); // Bind to 5001
-    options.ListenAnyIP(5002); // Bind to 5002
-    options.ListenAnyIP(5003);
-});
+// builder.WebHost.ConfigureKestrel(options =>
+// {
+//     options.ListenAnyIP(5000); // Bind to 5000
+//     options.ListenAnyIP(5001); // Bind to 5001
+//     options.ListenAnyIP(5002); // Bind to 5002
+//     options.ListenAnyIP(5003);
+// });
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
