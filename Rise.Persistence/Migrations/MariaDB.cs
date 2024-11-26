@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore.Migrations;
 using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
+using Pomelo.EntityFrameworkCore.MySql.Metadata;
+
 public partial class CreateInitialSchema : Migration
 {
     protected override void Up(MigrationBuilder migrationBuilder)
