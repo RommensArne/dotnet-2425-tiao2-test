@@ -70,7 +70,7 @@ builder
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
 {
-    options.UseMySql(builder.Configuration.GetConnectionString("SqlServer"));
+    options.UseSqlServer(builder.Configuration.GetConnectionString("SqlServer"));
     options.EnableDetailedErrors();
     options.EnableSensitiveDataLogging();
     options.UseTriggers(options => options.AddTrigger<EntityBeforeSaveTrigger>());
